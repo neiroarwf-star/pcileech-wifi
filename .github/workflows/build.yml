@@ -1,0 +1,42 @@
+name: Build DMA Firmware
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget libtinfo-dev libxrender1 libxtst6 libxi6 libxft2 libxext2 libxrandr2 libxinerama1
+
+      - name: Download Vivado Lab
+        run: |
+          wget -q https://www.xilinx.com/member/forms/download/xef.html?filename=Xilinx_Vivado_Lab_Lin_2023.1_0507_1903.tar.gz -O vivado-lab.tar.gz
+          tar -xzf vivado-lab.tar.gz
+          cd Xilinx_Vivado_Lab_Lin_2023.1_0507_1903
+          sudo ./install.sh -e Xilinx_Vivado_Lab_Lin_2023.1_0507_1903/xsetup -b
+          echo "/opt/Xilinx/Vivado_Lab/2023.1/bin" >> $GITHUB_PATH
+
+      - name: Generate project
+        run: |
+          # ВАЖНО: ВЫБЕРИ ПРАВИЛЬНЫЙ Tcl-ФАЙЛ ДЛЯ СВОЕЙ КАРТЫ
+          vivado_lab -mode batch -source vivado_generate_project_captain_75T.tcl
+
+      - name: Build firmware
+        run: |
+          vivado_lab -mode batch -source vivado_build.tcl
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dma-firmware-captain-75t
+          path: impl_1/*.bin
